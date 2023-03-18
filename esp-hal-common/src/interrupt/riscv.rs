@@ -11,9 +11,9 @@
 //! ...
 //! interrupt15() => Priority::Priority15
 //! ```
-
 use esp_riscv_rt::riscv::register::{mcause, mepc, mtvec};
 pub use esp_riscv_rt::TrapFrame;
+use crate::riscv;
 
 use crate::{
     peripherals::{self, Interrupt},
@@ -142,6 +142,7 @@ impl Priority {
 pub unsafe fn map(_core: Cpu, interrupt: Interrupt, which: CpuInterrupt) {
     let interrupt_number = interrupt as isize;
     let cpu_interrupt_number = which as isize;
+    //let cpu_interrupt_number = 12;
     let intr = &*crate::peripherals::INTERRUPT_CORE0::PTR;
     #[cfg(not(esp32c6))]
     let intr_map_base = intr.mac_intr_map.as_ptr();
@@ -406,18 +407,14 @@ mod vectored {
         InvalidInterruptPriority,
     }
 
-    /// Enables a interrupt at a given priority
+    /// Enables a interrupt at priority 1, and links it to the specified CPU interrupt.
     ///
     /// Note that interrupts still need to be enabled globally for interrupts
     /// to be serviced.
-    pub fn enable(interrupt: Interrupt, level: Priority) -> Result<(), Error> {
-        if matches!(level, Priority::None) {
-            return Err(Error::InvalidInterruptPriority);
-        }
+    pub fn enable(interrupt: Interrupt, cpu_interrupt:CpuInterrupt) -> Result<(), Error> {
         unsafe {
-            let cpu_interrupt =
-                core::mem::transmute(PRIORITY_TO_INTERRUPT[(level as usize) - 1] as u32);
             map(crate::get_core(), interrupt, cpu_interrupt);
+            set_priority(crate::get_core(), cpu_interrupt, Priority::Priority1);
             enable_cpu_interrupt(cpu_interrupt);
         }
         Ok(())
@@ -425,24 +422,26 @@ mod vectored {
 
     #[ram]
     unsafe fn handle_interrupts(cpu_intr: CpuInterrupt, context: &mut TrapFrame) {
-        let status = get_status(crate::get_core());
+       // let status = get_status(crate::get_core());
 
         // this has no effect on level interrupts, but the interrupt may be an edge one
         // so we clear it anyway
         clear(crate::get_core(), cpu_intr);
 
-        let configured_interrupts = get_configured_interrupts(crate::get_core(), status);
-        let mut interrupt_mask =
-            status & configured_interrupts[INTERRUPT_TO_PRIORITY[cpu_intr as usize - 1]];
-        while interrupt_mask != 0 {
-            let interrupt_nr = interrupt_mask.trailing_zeros();
+        //let configured_interrupts = get_configured_interrupts(crate::get_core(), status);
+        let interrupt_nr = mcause::read().bits() & 0x0FFFFFFF; //mask everything but the interrupt id
+        //panic!();
+        //let mut interrupt_mask =
+         //   status & configured_interrupts[INTERRUPT_TO_PRIORITY[cpu_intr as usize - 1]];
+       // while interrupt_mask != 0 {
+            //let interrupt_nr = interrupt_mask.trailing_zeros();
             // Interrupt::try_from can fail if interrupt already de-asserted:
             // silently ignore
             if let Ok(interrupt) = peripherals::Interrupt::try_from(interrupt_nr as u8) {
                 handle_interrupt(interrupt, context)
             }
-            interrupt_mask &= !(1u128 << interrupt_nr);
-        }
+            //interrupt_mask &= !(1u128 << interrupt_nr);
+        //}
     }
 
     #[ram]
@@ -560,11 +559,43 @@ mod vectored {
     pub unsafe fn interrupt19(context: &mut TrapFrame) {
         handle_interrupts(CpuInterrupt::Interrupt19, context)
     }
+    #[no_mangle]
+    #[ram]
+    pub unsafe fn interrupt20(context: &mut TrapFrame) {
+        handle_interrupts(CpuInterrupt::Interrupt20, context)
+    }
 }
 
 /// # Safety
 ///
 /// This function is called from an assembly trap handler.
+#[cfg(not(esp32c6))]
+#[doc(hidden)]
+#[export_name = "set_prio"]
+unsafe fn handle_priority()->u32{
+    let interrupt_id:usize = mcause::read().bits() & 0x0FFFFFFF; //MSB is whether its exception or interrupt.
+    let intr = &*crate::peripherals::INTERRUPT_CORE0::PTR;
+    let interrupt_priority =  intr.cpu_int_pri_0.as_ptr().offset(interrupt_id as isize).read_volatile();
+    let prev_interrupt_priority = intr.cpu_int_thresh.read().bits();
+    intr.cpu_int_thresh.write(|w| w.bits(interrupt_priority + 1)); //set the prio threshold to 1 more than current interrupt prio
+    unsafe{
+        riscv::interrupt::enable();
+    }
+    prev_interrupt_priority
+    //panic!();
+        
+
+}
+#[cfg(not(esp32c6))]
+#[doc(hidden)]
+#[export_name = "restore_prio"]
+unsafe fn restore_priority(stored_prio:u32){
+    let intr = &*crate::peripherals::INTERRUPT_CORE0::PTR;
+    intr.cpu_int_thresh.write(|w| w.bits(stored_prio)); //set the prio threshold to 1 more than current interrupt prio
+    //panic!();
+        
+
+}
 #[doc(hidden)]
 #[link_section = ".trap.rust"]
 #[export_name = "_start_trap_rust_hal"]
