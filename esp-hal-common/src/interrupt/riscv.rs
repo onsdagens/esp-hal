@@ -683,7 +683,7 @@ mod classic {
     #[cfg(all(feature = "interrupt-preemption"))]
     use procmacros::ram;
     #[cfg(all(feature = "interrupt-preemption"))]
-    #[ram]
+    #[inline(always)]
     pub(super) unsafe fn handle_priority() -> u32 {
         use super::mcause;
         use crate::riscv;
@@ -707,7 +707,7 @@ mod classic {
         prev_interrupt_priority
     }
     #[cfg(all(feature = "interrupt-preemption"))]
-    #[ram]
+    #[inline(always)]
     pub(super) unsafe fn restore_priority(stored_prio: u32) {
         use crate::riscv;
         unsafe {
