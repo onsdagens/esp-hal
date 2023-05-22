@@ -420,9 +420,9 @@ unsafe fn handle_exception(pc: usize, trap_frame: *mut TrapFrame) {
     let needs_atomic_emulation = (insn & 0b1111111) == 0b0101111;
     if !needs_atomic_emulation {
         extern "C" {
-            fn ExceptionHandler(tf: *mut TrapFrame);
+            fn ExceptionHandler(pc: usize, tf: *mut TrapFrame);
         }
-        ExceptionHandler(trap_frame);
+        ExceptionHandler(pc, trap_frame);
 
         return;
     }
