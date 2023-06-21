@@ -39,10 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `timer_interrupt` example in ESP32-H2 and refactor `clk_src` configuration (#576)
 - Move `esp-riscv-rt` into esp-hal (#578)
 - Add initial implementation of radio clocks for ESP32-H2 (#577)
+- Add initial support for `esp-hal-smartled` in ESP32-H2 (#589)
+- Add CRC functions from ESP ROM
+- Add initial support for RNG in ESP32-H2 (#591)
+- Add a `debug` feature to enable the PACs' `impl-register-debug` feature (#596)
+- Add initial support for `I2S` in ESP32-H2 (#597)
 
 ### Changed
 
 - Move core interrupt handling from Flash to RAM for RISC-V chips (ESP32-H2, ESP32-C2, ESP32-C3, ESP32-C6) (#541)
+- Change LED pin to GPIO2 in ESP32 blinky example (#581)
+- Udpate ESP32-H2 and C6 ESP32-clocks and remove i2c_clock for all chips but ESP32 (#592)
 
 ### Fixed
 
@@ -55,10 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sometimes half-duplex non-DMA SPI reads were reading garbage in non-release mode (#552)
 - ESP32-C3: Fix GPIO5 ADC channel id (#562)
 - ESP32-H2: Fix direct-boot feature
+- ESP32-C6: Support FOSC CLK calibration for ECO1+ chip revisions
+- Fixed CI by pinning the log crate to 0.4.18 (#600)
 
 ### Changed
 
 - Improve examples documentation (#533)
+- esp32h2-hal: added README (#585)
 
 ### Breaking
 
