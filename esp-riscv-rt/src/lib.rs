@@ -23,7 +23,7 @@ use rtt_target::rprintln;
 pub use riscv;
 use riscv::register::{
     mcause,
-    mtvec::{self, TrapMode},
+    mtvec::{self, TrapMode}, mepc,
 };
 pub use riscv_rt_macros::{entry, pre_init};
 
@@ -150,6 +150,8 @@ pub fn DefaultExceptionHandler(trap_frame: &TrapFrame) -> ! {
     use rtt_target::rprintln;
     let mcause: u32 = mcause::read().bits().try_into().unwrap();
     rprintln!("mcause:{:032b}", mcause);
+    let mepc: u32 = mepc::read() as u32;
+    rprintln!("mepc:{:08x}", mepc);
     loop {
         // Prevent this from turning into a UDF instruction
         // see rust-lang/rust#28728 for details
@@ -523,84 +525,78 @@ r#"
 .weak cpu_int_30_handler
 .weak cpu_int_31_handler
 _start_trap1:
-    addi sp, sp, -40
-    sw a0, 36(sp)    #stack a0
-    sw a1, 32(sp)
-    sw a2, 28(sp)
-    sw ra, 24(sp)   #stack return address
-    csrrs a1, mstatus, x0
-    csrrs a2, mepc, x0
-    csrrs a0, mcause, x0
-    sw a1, 20(sp)    #stack mstatus
-    sw a2, 16(sp)    #stack mepc
+    addi sp, sp, -24
+    sw a0, 0(sp)    #stack a0
+    sw a1, 4(sp)
+    sw ra, 8(sp)   #stack return address
+    csrrs a0, mstatus, x0
+    sw a0, 12(sp)    #stack mstatus
+    csrrs a0, mepc, x0
+    sw a0, 16(sp)    #stack mepc
     #_STORE_PRIO SUBROUTINE
+        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
+        lw a0, 0x194(a1)    #load current threshold
+        sw a0, 20(sp)       #stack current threshold
+        csrrs a0, mcause, x0
         andi a0, a0, 31     #mcause & 0b11111 gives interrupt id
         slli a0, a0, 2      #interrupt id * 4 gives byte offset from base
-        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
         add a0, a0, a1      #intr base + offset
-        lw a2, 0x114(a0)    #interrupt base + interrupt offset, 0x114 is base of prio registers in the register block
-        lw a0, 0x194(a1)    #threshold register is here always
-        addi a2, a2, 1      #threshold must be 1 higher
-        sw a2, 0x194(a1)    #save threshold in threshold register
+        lw a0, 0x114(a0)    #load current interrupt prio
+        addi a0, a0, 1      #threshold must be 1 higher
+        sw a0, 0x194(a1)    #set threshold
     #END
-    sw a0, 12(sp)   #stack old prio
     csrrsi x0, mstatus, 8 #enable global interrupts
     jal ra, cpu_int_1_handler
-    lw a0, 12(sp)  #load old prio
+    lw a0, 20(sp)  #load old prio
     #RETURN PRIO SUBROUTINE
     lui a1, 0x600C2 #intr base
     sw a0, 0x194(a1) #restore threshold
     #END
-    #jal ra, _return_prio
-    lw a0, 20(sp) #load mstatus
+    lw a0, 12(sp) #load mstatus
     csrrw x0, mstatus, a0
     lw a0, 16(sp) #load mepc
     csrrw x0, mepc, a0
-    lw a0, 36(sp)
-    lw a1, 32(sp)
-    lw a2, 28(sp)
-    lw ra, 24(sp)
-    addi sp, sp, 40 #pop
+    lw a0, 0(sp)
+    lw a1, 4(sp)
+    lw ra, 8(sp)
+    addi sp, sp, 24 #pop
     mret
 _start_trap2:
-    addi sp, sp, -40
-    sw a0, 36(sp)    #stack a0
-    sw a1, 32(sp)
-    sw a2, 28(sp)
-    sw ra, 24(sp)   #stack return address
-    csrrs a1, mstatus, x0
-    csrrs a2, mepc, x0
-    csrrs a0, mcause, x0
-    sw a1, 20(sp)    #stack mstatus
-    sw a2, 16(sp)    #stack mepc
+    addi sp, sp, -24
+    sw a0, 0(sp)    #stack a0
+    sw a1, 4(sp)
+    sw ra, 8(sp)   #stack return address
+    csrrs a0, mstatus, x0
+    sw a0, 12(sp)    #stack mstatus
+    csrrs a0, mepc, x0
+    sw a0, 16(sp)    #stack mepc
     #_STORE_PRIO SUBROUTINE
+        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
+        lw a0, 0x194(a1)    #load current threshold
+        sw a0, 20(sp)       #stack current threshold
+        csrrs a0, mcause, x0
         andi a0, a0, 31     #mcause & 0b11111 gives interrupt id
         slli a0, a0, 2      #interrupt id * 4 gives byte offset from base
-        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
         add a0, a0, a1      #intr base + offset
-        lw a2, 0x114(a0)    #interrupt base + interrupt offset, 0x114 is base of prio registers in the register block
-        lw a0, 0x194(a1)    #threshold register is here always
-        addi a2, a2, 1      #threshold must be 1 higher
-        sw a2, 0x194(a1)    #save threshold in threshold register
+        lw a0, 0x114(a0)    #load current interrupt prio
+        addi a0, a0, 1      #threshold must be 1 higher
+        sw a0, 0x194(a1)    #set threshold
     #END
-    sw a0, 12(sp)   #stack old prio
     csrrsi x0, mstatus, 8 #enable global interrupts
-    jal ra, cpu_int_1_handler
-    lw a0, 12(sp)  #load old prio
+    jal ra, cpu_int_2_handler
+    lw a0, 20(sp)  #load old prio
     #RETURN PRIO SUBROUTINE
     lui a1, 0x600C2 #intr base
     sw a0, 0x194(a1) #restore threshold
     #END
-    #jal ra, _return_prio
-    lw a0, 20(sp) #load mstatus
+    lw a0, 12(sp) #load mstatus
     csrrw x0, mstatus, a0
     lw a0, 16(sp) #load mepc
     csrrw x0, mepc, a0
-    lw a0, 36(sp)
-    lw a1, 32(sp)
-    lw a2, 28(sp)
-    lw ra, 24(sp)
-    addi sp, sp, 40 #pop
+    lw a0, 0(sp)
+    lw a1, 4(sp)
+    lw ra, 8(sp)
+    addi sp, sp, 24 #pop
     mret
 
 cpu_int_1_handler:
@@ -636,34 +632,5 @@ cpu_int_30_handler:
 cpu_int_31_handler:
     la ra, abort #abort since proper handler is not defined, this could also just load the default _start_trap_rust_hal address and let the hal handle it.
     jr ra
-
-
-#_store_prio:
-
-#_return_prio:
-#    lui a1, 0x600C_2000 #intr base
-#    sw a0, 0x194(a1) #restore threshold
     "#,
 }
-// #[link_section=".trap"]
-// #[no_mangle]
-// #[inline(always)]
-// pub unsafe extern "C" fn _store_prio(mcause: u32)->u32{
-//     let interrupt_id = mcause & 0b11111;
-//     //rprintln!("interrupt_id{}", interrupt_id);
-//     let intr_base = 0x600C_2000;
-//     let intr = (intr_base + 0x114) as *mut u32;
-//     let interrupt_priority = intr.offset(interrupt_id as isize).read_volatile();
-//     //rprintln!("interrupt_prio{}", interrupt_priority);
-//     let thresh_reg = (intr_base + 0x0194) as *mut u32;
-//     let prev_interrupt_priority = thresh_reg.read_volatile();
-//     thresh_reg.write_volatile(interrupt_priority + 1);
-//     prev_interrupt_priority
-// }
-// #[link_section=".trap"]
-// #[no_mangle]
-// pub unsafe extern "C" fn _return_prio(prio: u32){
-//     let intr_base = 0x600C_2000;
-//     let thresh_reg = (intr_base + 0x0194) as *mut u32;
-//     thresh_reg.write_volatile(prio);
-// }
