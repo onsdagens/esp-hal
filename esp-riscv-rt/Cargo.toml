@@ -12,11 +12,12 @@ categories   = ["embedded", "no-std"]
 [dependencies]
 riscv           = "0.10.1"
 riscv-rt-macros = "0.2.0"
-
+rtt-target = { version = "0.3.1", features=["riscv"]}
 [dev-dependencies]
 panic-halt = "0.2.0"
 
 [features]
+weak-handlers = []
 direct-vectoring = []
 interrupt-preemption = []
 has-mie-mip = []

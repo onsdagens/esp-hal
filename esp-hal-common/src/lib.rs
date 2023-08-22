@@ -226,6 +226,7 @@ mod critical_section_impl {
 
         unsafe impl critical_section::Impl for super::CriticalSection {
             unsafe fn acquire() -> critical_section::RawRestoreState {
+                use rtt_target::rprintln;
                 let mut mstatus = 0u32;
                 core::arch::asm!("csrrci {0}, mstatus, 8", inout(reg) mstatus);
                 let interrupts_active = (mstatus & 0b1000) != 0;
@@ -234,7 +235,6 @@ mod critical_section_impl {
                     let guard = multicore::MULTICORE_LOCK.lock();
                     core::mem::forget(guard); // forget it so drop doesn't run
                 }
-
                 interrupts_active as _
             }
 

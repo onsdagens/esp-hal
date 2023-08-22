@@ -15,8 +15,10 @@
 
 // NOTE: Adapted from riscv-rt/src/lib.rs
 #![no_std]
+#![feature(abi_riscv_interrupt)]
 
 use core::arch::global_asm;
+use rtt_target::rprintln;
 
 pub use riscv;
 use riscv::register::{
@@ -145,6 +147,9 @@ pub unsafe extern "C" fn start_trap_rust(trap_frame: *const TrapFrame) {
 #[no_mangle]
 #[allow(unused_variables, non_snake_case)]
 pub fn DefaultExceptionHandler(trap_frame: &TrapFrame) -> ! {
+    use rtt_target::rprintln;
+    let mcause: u32 = mcause::read().bits().try_into().unwrap();
+    rprintln!("mcause:{:032b}", mcause);
     loop {
         // Prevent this from turning into a UDF instruction
         // see rust-lang/rust#28728 for details
@@ -238,10 +243,10 @@ pub unsafe extern "Rust" fn default_post_init() {}
 #[rustfmt::skip]
 pub unsafe extern "Rust" fn default_setup_interrupts() {
     extern "C" {
-        fn _start_trap();
+        fn _vector_table();
     }
 
-    mtvec::write(_start_trap as usize, TrapMode::Direct);
+    mtvec::write(_vector_table as usize, TrapMode::Direct);
 }
 
 /// Parse cfg attributes inside a global_asm call.
@@ -422,349 +427,10 @@ _abs_start:
     _start_trap_rust, then restores all saved registers before `mret`
 */
 .section .trap, "ax"
-.weak _start_trap
-.weak _start_trap1
-.weak _start_trap2
-.weak _start_trap3
-.weak _start_trap4
-.weak _start_trap5
-.weak _start_trap6
-.weak _start_trap7
-.weak _start_trap8
-.weak _start_trap9
-.weak _start_trap10
-.weak _start_trap11
-.weak _start_trap12
-.weak _start_trap13
-.weak _start_trap14
-.weak _start_trap15
-.weak _start_trap16
-.weak _start_trap17
-.weak _start_trap18
-.weak _start_trap19
-.weak _start_trap20
-.weak _start_trap21
-.weak _start_trap22
-.weak _start_trap23
-.weak _start_trap24
-.weak _start_trap25
-.weak _start_trap26
-.weak _start_trap27
-.weak _start_trap28
-.weak _start_trap29
-.weak _start_trap30
-.weak _start_trap31
-"#,
-#[cfg(feature="direct-vectoring")]
-r#"
-_start_trap1:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_1_handler
-    j _start_trap_direct
-_start_trap2:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_2_handler
-    j _start_trap_direct
-_start_trap3:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_3_handler
-    j _start_trap_direct
-_start_trap4:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_4_handler
-    j _start_trap_direct
-_start_trap5:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_5_handler
-    j _start_trap_direct
-_start_trap6:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_6_handler
-    j _start_trap_direct
-_start_trap7:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_7_handler
-    j _start_trap_direct
-_start_trap8:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_8_handler
-    j _start_trap_direct
-_start_trap9:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_9_handler
-    j _start_trap_direct
-_start_trap10:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_10_handler
-    j _start_trap_direct
-_start_trap11:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_11_handler
-    j _start_trap_direct
-_start_trap12:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_12_handler
-    j _start_trap_direct
-_start_trap13:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_13_handler
-    j _start_trap_direct
-_start_trap14:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_14_handler
-    j _start_trap_direct
-_start_trap15:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_15_handler
-    j _start_trap_direct
-_start_trap16:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_16_handler
-    j _start_trap_direct
-_start_trap17:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_17_handler
-    j _start_trap_direct
-_start_trap18:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_18_handler
-    j _start_trap_direct
-_start_trap19:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_19_handler
-    j _start_trap_direct
-_start_trap20:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_20_handler
-    j _start_trap_direct
-_start_trap21:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_21_handler
-    j _start_trap_direct
-_start_trap22:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_22_handler
-    j _start_trap_direct
-_start_trap23:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_23_handler
-    j _start_trap_direct
-_start_trap24:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_24_handler
-    j _start_trap_direct
-_start_trap25:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_25_handler
-    j _start_trap_direct
-_start_trap26:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_26_handler
-    j _start_trap_direct
-_start_trap27:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_27_handler
-    j _start_trap_direct
-_start_trap28:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_28_handler
-    j _start_trap_direct
-_start_trap29:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_29_handler
-    j _start_trap_direct
-_start_trap30:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_30_handler
-    j _start_trap_direct
-_start_trap31:
-    addi sp, sp, -40*4
-    sw ra, 0(sp)
-    la ra, cpu_int_31_handler
-    j _start_trap_direct
-"#,
-#[cfg(not(feature="direct-vectoring"))]
-r#"
-_start_trap1:
-_start_trap2:
-_start_trap3:
-_start_trap4:
-_start_trap5:
-_start_trap6:
-_start_trap7:
-_start_trap8:
-_start_trap9:
-_start_trap10:
-_start_trap11:
-_start_trap12:
-_start_trap13:
-_start_trap14:
-_start_trap15:
-_start_trap16:
-_start_trap17:
-_start_trap18:
-_start_trap19:
-_start_trap20:
-_start_trap21:
-_start_trap22:
-_start_trap23:
-_start_trap24:
-_start_trap25:
-_start_trap26:
-_start_trap27:
-_start_trap28:
-_start_trap29:
-_start_trap30:
-_start_trap31:
 
-"#,
-r#"
-_start_trap: 
-    addi sp, sp, -40*4
-    sw ra, 0*4(sp)"#,
-#[cfg(feature="direct-vectoring")] //for the directly vectored handlers the above is stacked beforehand
-r#"
-    la ra, _start_trap_rust_hal #this runs on exception, use regular fault handler
-_start_trap_direct:
-"#,
-r#"
-    sw t0, 1*4(sp)
-    sw t1, 2*4(sp)
-    sw t2, 3*4(sp)
-    sw t3, 4*4(sp)
-    sw t4, 5*4(sp)
-    sw t5, 6*4(sp)
-    sw t6, 7*4(sp)
-    sw a0, 8*4(sp)
-    sw a1, 9*4(sp)
-    sw a2, 10*4(sp)
-    sw a3, 11*4(sp)
-    sw a4, 12*4(sp)
-    sw a5, 13*4(sp)
-    sw a6, 14*4(sp)
-    sw a7, 15*4(sp)
-    sw s0, 16*4(sp)
-    sw s1, 17*4(sp)
-    sw s2, 18*4(sp)
-    sw s3, 19*4(sp)
-    sw s4, 20*4(sp)
-    sw s5, 21*4(sp)
-    sw s6, 22*4(sp)
-    sw s7, 23*4(sp)
-    sw s8, 24*4(sp)
-    sw s9, 25*4(sp)
-    sw s10, 26*4(sp)
-    sw s11, 27*4(sp)
-    sw gp, 28*4(sp)
-    sw tp, 29*4(sp)
-    csrrs t1, mepc, x0
-    sw t1, 31*4(sp)
-    csrrs t1, mstatus, x0
-    sw t1, 32*4(sp)
-    csrrs t1, mcause, x0
-    sw t1, 33*4(sp)
-    csrrs t1, mtval, x0
-    sw t1, 34*4(sp)
-
-    addi s0, sp, 40*4
-    sw s0, 30*4(sp)
-
-    add a0, sp, zero
-    "#,
-    #[cfg(all(feature="interrupt-preemption", feature="direct-vectoring"))] //store current priority, set threshold, enable interrupts
-    r#"
-    addi sp, sp, -4 #build stack
-    sw ra, 0(sp)
-    jal ra, _handle_priority
-    lw ra, 0(sp)
-    sw a0, 0(sp) #reuse old stack, a0 is return of _handle_priority
-    addi a0, sp, 4 #the proper stack pointer is an argument to the HAL handler
-    "#,
-    #[cfg(not(feature="direct-vectoring"))] //jump to HAL handler
-    r#"
-    jal ra, _start_trap_rust_hal
-    "#,
-    #[cfg(feature="direct-vectoring")] //jump to handler loaded in direct handler
-    r#"
-    jalr ra, ra #jump to label loaded in _start_trapx
-    "#,
-    #[cfg(all(feature="interrupt-preemption", feature="direct-vectoring"))] //restore threshold
-    r#"
-    lw a0, 0(sp) #load stored priority
-    jal ra, _restore_priority
-    addi sp, sp, 4 #pop
-    "#,
-    r#"
-    lw t1, 31*4(sp)
-    csrrw x0, mepc, t1
-
-    lw t1, 32*4(sp)
-    csrrw x0, mstatus, t1
-
-    lw ra, 0*4(sp)
-    lw t0, 1*4(sp)
-    lw t1, 2*4(sp)
-    lw t2, 3*4(sp)
-    lw t3, 4*4(sp)
-    lw t4, 5*4(sp)
-    lw t5, 6*4(sp)
-    lw t6, 7*4(sp)
-    lw a0, 8*4(sp)
-    lw a1, 9*4(sp)
-    lw a2, 10*4(sp)
-    lw a3, 11*4(sp)
-    lw a4, 12*4(sp)
-    lw a5, 13*4(sp)
-    lw a6, 14*4(sp)
-    lw a7, 15*4(sp)
-    lw s0, 16*4(sp)
-    lw s1, 17*4(sp)
-    lw s2, 18*4(sp)
-    lw s3, 19*4(sp)
-    lw s4, 20*4(sp)
-    lw s5, 21*4(sp)
-    lw s6, 22*4(sp)
-    lw s7, 23*4(sp)
-    lw s8, 24*4(sp)
-    lw s9, 25*4(sp)
-    lw s10, 26*4(sp)
-    lw s11, 27*4(sp)
-    lw gp, 28*4(sp)
-    lw tp, 29*4(sp)
-    lw sp, 30*4(sp)
-
-    # SP was restored from the original SP
-    mret
+_start_trap:
+    la t0, abort
+    jr t0
 
 /* Make sure there is an abort when linking */
 .section .text.abort
@@ -786,42 +452,42 @@ abort:
 .option norvc
 
 _vector_table:
-    j _start_trap
+    j _start_trap_rust
     j _start_trap1
     j _start_trap2
-    j _start_trap3
-    j _start_trap4
-    j _start_trap5
-    j _start_trap6
-    j _start_trap7
-    j _start_trap8
-    j _start_trap9
-    j _start_trap10
-    j _start_trap11
-    j _start_trap12
-    j _start_trap13
-    j _start_trap14
-    j _start_trap15
-    j _start_trap16
-    j _start_trap17
-    j _start_trap18
-    j _start_trap19
-    j _start_trap20
-    j _start_trap21
-    j _start_trap22
-    j _start_trap23
-    j _start_trap24
-    j _start_trap25
-    j _start_trap26
-    j _start_trap27
-    j _start_trap28
-    j _start_trap29
-    j _start_trap30
-    j _start_trap31
+    j cpu_int_3_handler
+    j cpu_int_4_handler
+    j cpu_int_5_handler
+    j cpu_int_6_handler
+    j cpu_int_7_handler
+    j cpu_int_8_handler
+    j cpu_int_9_handler
+    j cpu_int_10_handler
+    j cpu_int_11_handler
+    j cpu_int_12_handler
+    j cpu_int_13_handler
+    j cpu_int_14_handler
+    j cpu_int_15_handler
+    j cpu_int_16_handler
+    j cpu_int_17_handler
+    j cpu_int_18_handler
+    j cpu_int_19_handler
+    j cpu_int_20_handler
+    j cpu_int_21_handler
+    j cpu_int_22_handler
+    j cpu_int_23_handler
+    j cpu_int_24_handler
+    j cpu_int_25_handler
+    j cpu_int_26_handler
+    j cpu_int_27_handler
+    j cpu_int_28_handler
+    j cpu_int_29_handler
+    j cpu_int_30_handler
+    j cpu_int_31_handler
 
 .option pop
 "#,
-#[cfg(feature="direct-vectoring")]
+#[cfg(feature="weak-handlers")]
 r#"
 #this is required for the linking step, these symbols for in-use interrupts should always be overwritten by the user.
 .section .trap, "ax"
@@ -856,6 +522,87 @@ r#"
 .weak cpu_int_29_handler
 .weak cpu_int_30_handler
 .weak cpu_int_31_handler
+_start_trap1:
+    addi sp, sp, -40
+    sw a0, 36(sp)    #stack a0
+    sw a1, 32(sp)
+    sw a2, 28(sp)
+    sw ra, 24(sp)   #stack return address
+    csrrs a1, mstatus, x0
+    csrrs a2, mepc, x0
+    csrrs a0, mcause, x0
+    sw a1, 20(sp)    #stack mstatus
+    sw a2, 16(sp)    #stack mepc
+    #_STORE_PRIO SUBROUTINE
+        andi a0, a0, 31     #mcause & 0b11111 gives interrupt id
+        slli a0, a0, 2      #interrupt id * 4 gives byte offset from base
+        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
+        add a0, a0, a1      #intr base + offset
+        lw a2, 0x114(a0)    #interrupt base + interrupt offset, 0x114 is base of prio registers in the register block
+        lw a0, 0x194(a1)    #threshold register is here always
+        addi a2, a2, 1      #threshold must be 1 higher
+        sw a2, 0x194(a1)    #save threshold in threshold register
+    #END
+    sw a0, 12(sp)   #stack old prio
+    csrrsi x0, mstatus, 8 #enable global interrupts
+    jal ra, cpu_int_1_handler
+    lw a0, 12(sp)  #load old prio
+    #RETURN PRIO SUBROUTINE
+    lui a1, 0x600C2 #intr base
+    sw a0, 0x194(a1) #restore threshold
+    #END
+    #jal ra, _return_prio
+    lw a0, 20(sp) #load mstatus
+    csrrw x0, mstatus, a0
+    lw a0, 16(sp) #load mepc
+    csrrw x0, mepc, a0
+    lw a0, 36(sp)
+    lw a1, 32(sp)
+    lw a2, 28(sp)
+    lw ra, 24(sp)
+    addi sp, sp, 40 #pop
+    mret
+_start_trap2:
+    addi sp, sp, -40
+    sw a0, 36(sp)    #stack a0
+    sw a1, 32(sp)
+    sw a2, 28(sp)
+    sw ra, 24(sp)   #stack return address
+    csrrs a1, mstatus, x0
+    csrrs a2, mepc, x0
+    csrrs a0, mcause, x0
+    sw a1, 20(sp)    #stack mstatus
+    sw a2, 16(sp)    #stack mepc
+    #_STORE_PRIO SUBROUTINE
+        andi a0, a0, 31     #mcause & 0b11111 gives interrupt id
+        slli a0, a0, 2      #interrupt id * 4 gives byte offset from base
+        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
+        add a0, a0, a1      #intr base + offset
+        lw a2, 0x114(a0)    #interrupt base + interrupt offset, 0x114 is base of prio registers in the register block
+        lw a0, 0x194(a1)    #threshold register is here always
+        addi a2, a2, 1      #threshold must be 1 higher
+        sw a2, 0x194(a1)    #save threshold in threshold register
+    #END
+    sw a0, 12(sp)   #stack old prio
+    csrrsi x0, mstatus, 8 #enable global interrupts
+    jal ra, cpu_int_1_handler
+    lw a0, 12(sp)  #load old prio
+    #RETURN PRIO SUBROUTINE
+    lui a1, 0x600C2 #intr base
+    sw a0, 0x194(a1) #restore threshold
+    #END
+    #jal ra, _return_prio
+    lw a0, 20(sp) #load mstatus
+    csrrw x0, mstatus, a0
+    lw a0, 16(sp) #load mepc
+    csrrw x0, mepc, a0
+    lw a0, 36(sp)
+    lw a1, 32(sp)
+    lw a2, 28(sp)
+    lw ra, 24(sp)
+    addi sp, sp, 40 #pop
+    mret
+
 cpu_int_1_handler:
 cpu_int_2_handler:
 cpu_int_3_handler:
@@ -889,5 +636,34 @@ cpu_int_30_handler:
 cpu_int_31_handler:
     la ra, abort #abort since proper handler is not defined, this could also just load the default _start_trap_rust_hal address and let the hal handle it.
     jr ra
-"#,
+
+
+#_store_prio:
+
+#_return_prio:
+#    lui a1, 0x600C_2000 #intr base
+#    sw a0, 0x194(a1) #restore threshold
+    "#,
 }
+// #[link_section=".trap"]
+// #[no_mangle]
+// #[inline(always)]
+// pub unsafe extern "C" fn _store_prio(mcause: u32)->u32{
+//     let interrupt_id = mcause & 0b11111;
+//     //rprintln!("interrupt_id{}", interrupt_id);
+//     let intr_base = 0x600C_2000;
+//     let intr = (intr_base + 0x114) as *mut u32;
+//     let interrupt_priority = intr.offset(interrupt_id as isize).read_volatile();
+//     //rprintln!("interrupt_prio{}", interrupt_priority);
+//     let thresh_reg = (intr_base + 0x0194) as *mut u32;
+//     let prev_interrupt_priority = thresh_reg.read_volatile();
+//     thresh_reg.write_volatile(interrupt_priority + 1);
+//     prev_interrupt_priority
+// }
+// #[link_section=".trap"]
+// #[no_mangle]
+// pub unsafe extern "C" fn _return_prio(prio: u32){
+//     let intr_base = 0x600C_2000;
+//     let thresh_reg = (intr_base + 0x0194) as *mut u32;
+//     thresh_reg.write_volatile(prio);
+// }

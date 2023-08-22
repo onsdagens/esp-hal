@@ -109,6 +109,7 @@ pub struct SoftwareInterruptControl {
 }
 
 impl SoftwareInterruptControl {
+    #[inline(always)]
     pub fn raise(&mut self, interrupt: SoftwareInterrupt) {
         #[cfg(not(any(esp32c6, esp32h2)))]
         let system = unsafe { &*SystemPeripheral::PTR };
@@ -138,7 +139,7 @@ impl SoftwareInterruptControl {
             }
         }
     }
-
+    #[inline(always)]
     pub fn reset(&mut self, interrupt: SoftwareInterrupt) {
         #[cfg(not(any(esp32c6, esp32h2)))]
         let system = unsafe { &*SystemPeripheral::PTR };
