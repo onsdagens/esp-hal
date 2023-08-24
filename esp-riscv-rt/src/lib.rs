@@ -196,6 +196,11 @@ extern "C" {
     fn MachineExternal();
 }
 
+extern "C" {
+    static priority_handler_1:u32;
+    static priority_handler_2:u32;
+}
+
 #[doc(hidden)]
 pub union Vector {
     pub handler: unsafe extern "C" fn(),
@@ -493,6 +498,8 @@ _vector_table:
 r#"
 #this is required for the linking step, these symbols for in-use interrupts should always be overwritten by the user.
 .section .trap, "ax"
+.extern priority_handler_1
+.extern priority_handler_2
 .weak cpu_int_1_handler
 .weak cpu_int_2_handler
 .weak cpu_int_3_handler
@@ -525,78 +532,156 @@ r#"
 .weak cpu_int_30_handler
 .weak cpu_int_31_handler
 _start_trap1:
-    addi sp, sp, -24
-    sw a0, 0(sp)    #stack a0
-    sw a1, 4(sp)
-    sw ra, 8(sp)   #stack return address
-    csrrs a0, mstatus, x0
-    sw a0, 12(sp)    #stack mstatus
-    csrrs a0, mepc, x0
-    sw a0, 16(sp)    #stack mepc
+    csrrwi x0, 0x7e1, 0 #disable timer
+    addi    sp, sp, -0x4c  
+    sw      a0, 0x10(sp)       
+    sw      a1, 0x14(sp)
+    csrrs   a0, mstatus, x0
+    sw      a0, 0x00(sp)      
+    csrrs   a0, mepc, x0
+    sw      a0, 0x04(sp)
+
     #_STORE_PRIO SUBROUTINE
-        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
-        lw a0, 0x194(a1)    #load current threshold
-        sw a0, 20(sp)       #stack current threshold
-        csrrs a0, mcause, x0
-        andi a0, a0, 31     #mcause & 0b11111 gives interrupt id
-        slli a0, a0, 2      #interrupt id * 4 gives byte offset from base
-        add a0, a0, a1      #intr base + offset
-        lw a0, 0x114(a0)    #load current interrupt prio
-        addi a0, a0, 1      #threshold must be 1 higher
-        sw a0, 0x194(a1)    #set threshold
+        lui     a1, 0x600C2     
+        lw      a0, 0x194(a1)   
+        sw      a0, 0x08(sp)      
+        csrrs   a0, mcause, x0  
+        andi    a0, a0, 31      
+        slli    a0, a0, 2       
+        add     a0, a0, a1      
+        lw      a0, 0x114(a0)   
+        addi    a0, a0, 1       
+        sw      a0, 0x194(a1)   
+        csrrsi  x0, mstatus, 8 
     #END
-    csrrsi x0, mstatus, 8 #enable global interrupts
-    jal ra, cpu_int_1_handler
-    lw a0, 20(sp)  #load old prio
+
+   # lui     a1, 0x600C2     
+   # lw      a0, 0x194(a1)   
+   # sw      a0, 0x08(sp)      
+   # li      a0, %lo(priority_handler_1)
+   # sw      a0, 0x194(a1)   
+  #  csrrsi  x0, mstatus, 8  
+
+    #csrrwi x0, 0x7e1, 0 #disable timer
+    sw      ra, 0x0c(sp)
+    sw      a2, 0x18(sp)
+    sw      a3, 0x1c(sp)
+    sw      a4, 0x20(sp)
+    sw      a5, 0x24(sp)
+    sw      a6, 0x28(sp)
+    sw      a7, 0x2c(sp)
+    sw      t0, 0x30(sp)
+    sw      t1, 0x34(sp)
+    sw      t2, 0x38(sp)
+    sw      t3, 0x3c(sp)
+    sw      t4, 0x40(sp)
+    sw      t5, 0x44(sp)
+    sw      t6, 0x48(sp)
+    jal     ra, cpu_int_1_handler
+
     #RETURN PRIO SUBROUTINE
-    lui a1, 0x600C2 #intr base
-    sw a0, 0x194(a1) #restore threshold
+        lw      a0, 0x08(sp)      
+        lui     a1, 0x600C2     
+        sw      a0, 0x194(a1)
     #END
-    lw a0, 12(sp) #load mstatus
-    csrrw x0, mstatus, a0
-    lw a0, 16(sp) #load mepc
-    csrrw x0, mepc, a0
-    lw a0, 0(sp)
-    lw a1, 4(sp)
-    lw ra, 8(sp)
-    addi sp, sp, 24 #pop
+
+    lw      a0, 0x00(sp)      
+    csrrw   x0, mstatus, a0
+    lw      a0, 0x04(sp)      
+    csrrw   x0, mepc, a0
+    lw      ra, 0x0c(sp)
+    lw      a0, 0x10(sp)
+    lw      a1, 0x14(sp)
+    lw      a2, 0x18(sp)
+    lw      a3, 0x1c(sp)
+    lw      a4, 0x20(sp)
+    lw      a5, 0x24(sp)
+    lw      a6, 0x28(sp)
+    lw      a7, 0x2c(sp)
+    lw      t0, 0x30(sp)
+    lw      t1, 0x34(sp)
+    lw      t2, 0x38(sp)
+    lw      t3, 0x3c(sp)
+    lw      t4, 0x40(sp)
+    lw      t5, 0x44(sp)
+    lw      t6, 0x48(sp)
+    addi    sp, sp, 0x4c      
     mret
 _start_trap2:
-    addi sp, sp, -24
-    sw a0, 0(sp)    #stack a0
-    sw a1, 4(sp)
-    sw ra, 8(sp)   #stack return address
-    csrrs a0, mstatus, x0
-    sw a0, 12(sp)    #stack mstatus
-    csrrs a0, mepc, x0
-    sw a0, 16(sp)    #stack mepc
+    csrrwi x0, 0x7e1, 0 #disable timer
+    addi    sp, sp, -0x4c  
+    sw      a0, 0x10(sp)       
+    sw      a1, 0x14(sp)
+    csrrs   a0, mstatus, x0
+    sw      a0, 0x00(sp)      
+    csrrs   a0, mepc, x0
+    sw      a0, 0x04(sp)
+
     #_STORE_PRIO SUBROUTINE
-        lui a1, 0x600C2     #intr base upper bytes we need a separate register for this
-        lw a0, 0x194(a1)    #load current threshold
-        sw a0, 20(sp)       #stack current threshold
-        csrrs a0, mcause, x0
-        andi a0, a0, 31     #mcause & 0b11111 gives interrupt id
-        slli a0, a0, 2      #interrupt id * 4 gives byte offset from base
-        add a0, a0, a1      #intr base + offset
-        lw a0, 0x114(a0)    #load current interrupt prio
-        addi a0, a0, 1      #threshold must be 1 higher
-        sw a0, 0x194(a1)    #set threshold
+        lui     a1, 0x600C2     
+        lw      a0, 0x194(a1)   
+        sw      a0, 0x08(sp)      
+        csrrs   a0, mcause, x0  
+        andi    a0, a0, 31      
+        slli    a0, a0, 2       
+        add     a0, a0, a1      
+        lw      a0, 0x114(a0)   
+        addi    a0, a0, 1       
+        sw      a0, 0x194(a1)   
+        csrrsi  x0, mstatus, 8 
     #END
-    csrrsi x0, mstatus, 8 #enable global interrupts
-    jal ra, cpu_int_2_handler
-    lw a0, 20(sp)  #load old prio
+
+    #lui     a1, 0x600C2     
+    #lw      a0, 0x194(a1)   
+    #sw      a0, 0x08(sp)      
+    #li      a0, %lo(priority_handler_2)
+    #sw      a0, 0x194(a1)   
+    #csrrsi  x0, mstatus, 8  
+
+    #csrrwi x0, 0x7e1, 0 #disable timer
+    sw      ra, 0x0c(sp)
+    sw      a2, 0x18(sp)
+    sw      a3, 0x1c(sp)
+    sw      a4, 0x20(sp)
+    sw      a5, 0x24(sp)
+    sw      a6, 0x28(sp)
+    sw      a7, 0x2c(sp)
+    sw      t0, 0x30(sp)
+    sw      t1, 0x34(sp)
+    sw      t2, 0x38(sp)
+    sw      t3, 0x3c(sp)
+    sw      t4, 0x40(sp)
+    sw      t5, 0x44(sp)
+    sw      t6, 0x48(sp)
+    jal     ra, cpu_int_2_handler
+
     #RETURN PRIO SUBROUTINE
-    lui a1, 0x600C2 #intr base
-    sw a0, 0x194(a1) #restore threshold
+        lw      a0, 0x08(sp)      
+        lui     a1, 0x600C2     
+        sw      a0, 0x194(a1)
     #END
-    lw a0, 12(sp) #load mstatus
-    csrrw x0, mstatus, a0
-    lw a0, 16(sp) #load mepc
-    csrrw x0, mepc, a0
-    lw a0, 0(sp)
-    lw a1, 4(sp)
-    lw ra, 8(sp)
-    addi sp, sp, 24 #pop
+
+    lw      a0, 0x00(sp)      
+    csrrw   x0, mstatus, a0
+    lw      a0, 0x04(sp)      
+    csrrw   x0, mepc, a0
+    lw      ra, 0x0c(sp)
+    lw      a0, 0x10(sp)
+    lw      a1, 0x14(sp)
+    lw      a2, 0x18(sp)
+    lw      a3, 0x1c(sp)
+    lw      a4, 0x20(sp)
+    lw      a5, 0x24(sp)
+    lw      a6, 0x28(sp)
+    lw      a7, 0x2c(sp)
+    lw      t0, 0x30(sp)
+    lw      t1, 0x34(sp)
+    lw      t2, 0x38(sp)
+    lw      t3, 0x3c(sp)
+    lw      t4, 0x40(sp)
+    lw      t5, 0x44(sp)
+    lw      t6, 0x48(sp)
+    addi    sp, sp, 0x4c      
     mret
 
 cpu_int_1_handler:
