@@ -196,11 +196,6 @@ extern "C" {
     fn MachineExternal();
 }
 
-extern "C" {
-    static priority_handler_1:u32;
-    static priority_handler_2:u32;
-}
-
 #[doc(hidden)]
 pub union Vector {
     pub handler: unsafe extern "C" fn(),
@@ -498,8 +493,9 @@ _vector_table:
 r#"
 #this is required for the linking step, these symbols for in-use interrupts should always be overwritten by the user.
 .section .trap, "ax"
-.extern priority_handler_1
-.extern priority_handler_2
+.balign 4
+.weak priority_handler_1
+.weak priority_handler_2
 .weak cpu_int_1_handler
 .weak cpu_int_2_handler
 .weak cpu_int_3_handler
@@ -532,7 +528,7 @@ r#"
 .weak cpu_int_30_handler
 .weak cpu_int_31_handler
 _start_trap1:
-    csrrwi x0, 0x7e1, 0 #disable timer
+    csrrwi x0, 0x7e1, 1 #disable timer
     addi    sp, sp, -0x4c  
     sw      a0, 0x10(sp)       
     sw      a1, 0x14(sp)
@@ -540,29 +536,26 @@ _start_trap1:
     sw      a0, 0x00(sp)      
     csrrs   a0, mepc, x0
     sw      a0, 0x04(sp)
-
     #_STORE_PRIO SUBROUTINE
-        lui     a1, 0x600C2     
-        lw      a0, 0x194(a1)   
-        sw      a0, 0x08(sp)      
-        csrrs   a0, mcause, x0  
-        andi    a0, a0, 31      
-        slli    a0, a0, 2       
-        add     a0, a0, a1      
-        lw      a0, 0x114(a0)   
-        addi    a0, a0, 1       
-        sw      a0, 0x194(a1)   
-        csrrsi  x0, mstatus, 8 
+    #    lui     a1, 0x600C2     
+    #    lw      a0, 0x194(a1)   
+    #    sw      a0, 0x08(sp)      
+    #    csrrs   a0, mcause, x0  
+    #    andi    a0, a0, 31      
+    #    slli    a0, a0, 2       
+    #    add     a0, a0, a1      
+    #    lw      a0, 0x114(a0)   
+    #    addi    a0, a0, 1       
+    #    sw      a0, 0x194(a1)   
+    #    csrrsi  x0, mstatus, 8 
     #END
-
-   # lui     a1, 0x600C2     
-   # lw      a0, 0x194(a1)   
-   # sw      a0, 0x08(sp)      
-   # li      a0, %lo(priority_handler_1)
-   # sw      a0, 0x194(a1)   
-  #  csrrsi  x0, mstatus, 8  
-
-    #csrrwi x0, 0x7e1, 0 #disable timer
+    lui     a1, 0x600C2     
+    lw      a0, 0x194(a1)   
+    sw      a0, 0x08(sp)  
+    li      a0,  %lo(priority_handler_1)
+    sw      a0, 0x194(a1)   
+    csrrsi  x0, mstatus, 8  
+    csrrwi x0, 0x7e1, 0 #disable timer
     sw      ra, 0x0c(sp)
     sw      a2, 0x18(sp)
     sw      a3, 0x1c(sp)
@@ -618,25 +611,25 @@ _start_trap2:
     sw      a0, 0x04(sp)
 
     #_STORE_PRIO SUBROUTINE
-        lui     a1, 0x600C2     
-        lw      a0, 0x194(a1)   
-        sw      a0, 0x08(sp)      
-        csrrs   a0, mcause, x0  
-        andi    a0, a0, 31      
-        slli    a0, a0, 2       
-        add     a0, a0, a1      
-        lw      a0, 0x114(a0)   
-        addi    a0, a0, 1       
-        sw      a0, 0x194(a1)   
-        csrrsi  x0, mstatus, 8 
+    #    lui     a1, 0x600C2     
+    #    lw      a0, 0x194(a1)   
+    #    sw      a0, 0x08(sp)      
+    #    csrrs   a0, mcause, x0  
+    #    andi    a0, a0, 31      
+    #    slli    a0, a0, 2       
+    #    add     a0, a0, a1      
+    #    lw      a0, 0x114(a0)   
+    #    addi    a0, a0, 1       
+    #    sw      a0, 0x194(a1)   
+    #    csrrsi  x0, mstatus, 8 
     #END
 
-    #lui     a1, 0x600C2     
-    #lw      a0, 0x194(a1)   
-    #sw      a0, 0x08(sp)      
-    #li      a0, %lo(priority_handler_2)
-    #sw      a0, 0x194(a1)   
-    #csrrsi  x0, mstatus, 8  
+    lui     a1, 0x600C2     
+    lw      a0, 0x194(a1)   
+    sw      a0, 0x08(sp)      
+    li      a0, %lo(priority_handler_2)
+    sw      a0, 0x194(a1)   
+    csrrsi  x0, mstatus, 8  
 
     #csrrwi x0, 0x7e1, 0 #disable timer
     sw      ra, 0x0c(sp)
